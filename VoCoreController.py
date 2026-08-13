@@ -186,8 +186,8 @@ def parse_args():
 
 args = parse_args()
 
-#screen = screen.VocoreScreen()   # initialize the screen
-#screen.set_brightness(160)
+screen = screen.VocoreScreen()   # initialize the screen
+screen.set_brightness(160)
 revMeter = RevMeter()
 tireInfo = TireInfo()
 fuelInfo = FuelInfo()
@@ -313,7 +313,7 @@ try:
             drawPositionIndicator(draw, simData.position)#currently shows the wrong value for multiclass
             img = mirror_image_for_screen(img)
             #draw image on screen and update the display
-            #screen.draw_image(img)
+            screen.draw_image(img)
 finally:
     if keyboardSwitcher is not None:
         keyboardSwitcher.close()
