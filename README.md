@@ -19,8 +19,8 @@ The GUI is currently designed to fit the style of the EvilRank DID 4" Dashboard 
 
 | Sim | How telemetry is read |
 |---|---|
-| rFactor2 / Le Mans Ultimate | The game's own SMMP (shared-memory) plugin, read directly from `/dev/shm/$rFactor2SMMP_*` | This requires the rF2SharedMemoryMapPlugin_Wine (https://github.com/schlegp/rF2SharedMemoryMapPlugin_Wine) plugin to be installed and activated in Le Mans Ultimate
-| Assetto Corsa | `acpmf_physics` / `acpmf_static` / `acpmf_graphics` shared memory segments | via Spacefreak18/simshmbridge found here: https://github.com/Spacefreak18/simshmbridge
+| rFactor2 / Le Mans Ultimate | The game's own SMMP (shared-memory) plugin, read directly from `/dev/shm/$rFactor2SMMP_*` This requires the rF2SharedMemoryMapPlugin_Wine (https://github.com/schlegp/rF2SharedMemoryMapPlugin_Wine) plugin to be installed and activated in Le Mans Ultimate
+| Assetto Corsa | `acpmf_physics` / `acpmf_static` / `acpmf_graphics` shared memory segments via Spacefreak18/simshmbridge found here: https://github.com/Spacefreak18/simshmbridge
 
 Select which one to read from with `--sim rf2` (default) or `--sim ac`.
 
