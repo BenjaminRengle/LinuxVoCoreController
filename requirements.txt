@@ -1,0 +1,8 @@
+# Local editable install of the patched vocore_screen fork (numpy-vectorized
+# draw_image, PIL/numpy import fixes - see that repo's git history). Assumes
+# vocore-screen-py checked out as a sibling directory of this project; update
+# the path (or switch to a git URL) if that layout changes.
+-e ../vocore-screen-py
+
+pillow
+evdev
