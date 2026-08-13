@@ -1,6 +1,6 @@
 # LinuxVoCoreController
 
-A Python controller that reads live telemetry from sim racing titles on Linux and renders it as a set of dashboard "widgets" (rev meter, fuel, tires, delta, leaderboard) on a [VoCore Screen v2].
+A Python controller that reads live telemetry from sim racing titles on Linux (Proton) and renders it as a set of dashboard "widgets" (rev meter, fuel, tires, delta, leaderboard) on a [VoCore Screen v2].
 The GUI is currently designed to fit the style of the EvilRank DID 4" Dashboard Screen.
 
 ## Features
@@ -22,6 +22,8 @@ The GUI is currently designed to fit the style of the EvilRank DID 4" Dashboard 
 | Assetto Corsa | `acpmf_physics` / `acpmf_static` / `acpmf_graphics` shared memory segments via Spacefreak18/simshmbridge found here: https://github.com/Spacefreak18/simshmbridge
 
 Select which one to read from with `--sim rf2` (default) or `--sim ac`.
+
+As Spacefreak18 explained in the Repository above, mostly all Simracing titles except for LMU and rFactor2 which feature a Wine mapPlugin require briding of Shared Memory from Wine into Linux user space. Check his repository for further information
 
 ## Hardware
 
