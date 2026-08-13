@@ -8,7 +8,6 @@ from widgets.DeltaInfo import DeltaInfo
 from RFactor2Data import *
 from AssettoCorsaData import ACTelemetryReader
 from WidgetManager import WidgetManager
-from KeyboardSwitcher import KeyboardSwitcher
 from PIL import ImageFont,Image, ImageDraw
 from time import sleep, perf_counter
 from vocore_screen import screen
@@ -147,7 +146,6 @@ WIDGET_NAMES = ["fuel", "revmeter", "tires", "delta", "leaderboard"]
 SIM_NAMES = ["rf2", "ac"]
 TARGET_FPS = 30
 FRAME_INTERVAL = 1.0 / TARGET_FPS
-DEFAULT_KEYBOARD_DEVICE = "/dev/input/by-id/usb-IDOBAO_ID80_0-event-kbd"
 
 
 def parse_args():
@@ -165,20 +163,10 @@ def parse_args():
     parser.add_argument(
         "--widget",
         choices=WIDGET_NAMES,
-        default=None,
+        default=WIDGET_NAMES[0],
         help=(
-            "Lock the display to a single widget for the whole run and skip "
-            "starting the keyboard listener. If omitted, all widgets are "
-            "available and can be cycled through with the keyboard "
-            "(Left/Right/Tab to step, 1-9 to jump directly to one)."
-        ),
-    )
-    parser.add_argument(
-        "--keyboard-device",
-        default=DEFAULT_KEYBOARD_DEVICE,
-        help=(
-            "Path to the keyboard input device used for widget switching "
-            f"(default: {DEFAULT_KEYBOARD_DEVICE}). Ignored when --widget is set."
+            "Which widget to display for the whole run "
+            f"(default: {WIDGET_NAMES[0]})."
         ),
     )
     return parser.parse_args()
@@ -194,18 +182,10 @@ fuelInfo = FuelInfo()
 deltaInfo = DeltaInfo()
 leaderboardInfo = LeaderboardInfo()
 
-# Widgets are cycled through with the keyboard (Left/Right or Tab to step,
-# 1-9 to jump straight to one) instead of all being drawn on top of each
-# other. Order here is the cycle order and also the 1/2/3/... index.
-# Passing --widget on the command line locks to a single widget and skips
-# the keyboard listener entirely (no keyboard device access needed).
+# Widget switching is disabled for now; the display is locked to whichever
+# widget is selected via --widget for the whole run.
 widgetManager = WidgetManager(WIDGET_NAMES)
-keyboardSwitcher = None
-if args.widget:
-    widgetManager.select(args.widget)
-    print(f"Widget locked to '{args.widget}' via --widget; keyboard switching disabled")
-else:
-    keyboardSwitcher = KeyboardSwitcher(args.keyboard_device)
+widgetManager.select(args.widget)
 
 #TireTester(screen)  # Run the TireTester function to test the tire info display
 #RevTester(screen)  # Run the RevTester function to test the rev meter display
@@ -228,16 +208,6 @@ try:
         if sleep_time > 0:
             sleep(sleep_time)
         next_frame_time = max(now, next_frame_time) + FRAME_INTERVAL
-
-        if keyboardSwitcher is not None:
-            for command, value in keyboardSwitcher.drain_commands():
-                if command == "next":
-                    widgetManager.next()
-                elif command == "prev":
-                    widgetManager.prev()
-                elif command == "select":
-                    widgetManager.select(value)
-                print(f"Active widget: {widgetManager.current}")
 
         simData = telemetryReader.read()  # Read the telemetry data
 
@@ -315,6 +285,4 @@ try:
             #draw image on screen and update the display
             screen.draw_image(img)
 finally:
-    if keyboardSwitcher is not None:
-        keyboardSwitcher.close()
     telemetryReader.close()  # Close the telemetry data

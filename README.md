@@ -6,13 +6,12 @@ The GUI is currently designed to fit the style of the EvilRank DID 4" Dashboard 
 ## Features
 
 - **Live telemetry** from shared memory — no game plugins to install beyond what the sim already ships.
-- **Five dashboard widgets**, switchable on the fly:
+- **Five dashboard widgets**, one active at a time (selected via `--widget`):
   - **Rev meter** — RPM band, gear, speed, shift-light style redline warning.
   - **Fuel** — current fuel vs. capacity, estimated remaining laps/time, last lap & average consumption, fuel-to-add.
   - **Tires** — pressure, temperature, wear and slip ratio for all four corners.
   - **Delta** — live time delta against your fastest clean lap this session, plus a projected lap time and a track-position progress bar.
   - **Leaderboard** — standings table windowed around your own position (POS / driver / best lap / gap), mirroring the sims' own overlays.
-- **Keyboard-driven widget switching**, read directly from a raw input device via `evdev` — works headless, without window focus.
 - **Steady 30 FPS render loop**, paced instead of running flat out, since that's the panel's refresh ceiling.
 
 ## Supported sims
@@ -53,9 +52,9 @@ Talking to the panel itself is handled by [vocore-screen-py](https://github.com/
    pip install -r requirements.txt
    ```
 
-   This pulls in Pillow (rendering), `evdev` (keyboard input), and the `vocore_screen` package (USB panel driver, which in turn needs `libusb`).
+   This pulls in Pillow (rendering) and the `vocore_screen` package (USB panel driver, which in turn needs `libusb`).
 
-3. **USB and input device permissions.** Both the screen and the keyboard used for widget-switching are read directly from device nodes, so your user needs access to them:
+3. **USB device permissions.** The screen is read directly from a device node, so your user needs access to it:
    - **Screen (libusb):** add a udev rule so it's accessible without root — see the [vocore-screen-py README](https://github.com/BenjaminRengle/vocore-screen-py.git).
 
 4. **Fonts.** Widgets render text with Open Sans (`/usr/share/fonts/open-sans/OpenSans-{Bold,Regular,Light}.ttf`). Install an `open-sans` package from your distro, or adjust the font paths in `widgets/*.py` to match wherever it's installed.
@@ -80,22 +79,13 @@ python3 VoCoreController.py --sim rf2
 | Flag | Default | Description |
 |---|---|---|
 | `--sim {rf2,ac}` | `rf2` | Which sim to read telemetry from. |
-| `--widget {fuel,revmeter,tires,delta,leaderboard}` | *(none)* | Lock the display to a single widget for the whole run and skip starting the keyboard listener. |
-| `--keyboard-device PATH` | `/dev/input/by-id/usb-IDOBAO_ID80_0-event-kbd` | Input device used for widget switching. Ignored when `--widget` is set. |
+| `--widget {fuel,revmeter,tires,delta,leaderboard}` | `fuel` | Which widget to display for the whole run. |
 
 Extra arguments passed to `launch.sh` are forwarded to `VoCoreController.py`, e.g. `./launch.sh rf2 --widget fuel`.
 
-### Switching widgets
-
-With no `--widget` flag, all five widgets are available and can be cycled from any keyboard recognized as such (has letter + space keys):
-
-| Key | Action |
-|---|---|
-| `→` / `Tab` | Next widget |
-| `←` | Previous widget |
-| `1`–`9` | Jump directly to widget at that index |
-
 The controller waits for telemetry to become available (retrying every 5s) and only starts drawing once the sim reports a valid, in-session game phase (i.e. not stuck in menus/loading).
+
+Widget switching at runtime (e.g. via keyboard) has been removed for now — the display is locked to whichever widget is selected via `--widget`.
 
 ## Project structure
 
@@ -104,8 +94,7 @@ VoCoreController.py    Entry point: CLI args, render loop, widget dispatch
 SimData.py              Sim-agnostic telemetry data structures (SimData, CarData, LapTime, ...)
 RFactor2Data.py          rFactor2/LMU shared-memory reader → SimData
 AssettoCorsaData.py       Assetto Corsa shared-memory reader → SimData
-WidgetManager.py          Tracks/cycles which widget is currently active
-KeyboardSwitcher.py       Background evdev listener queuing widget-switch commands
+WidgetManager.py          Tracks which widget is currently active
 widgets/
 ├── RevMeter.py           Rev meter / gear / speed
 ├── FuelInfo.py           Fuel level & consumption estimates
