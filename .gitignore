@@ -1,0 +1,14 @@
+$rFactor2SMMP_Extended$
+$rFactor2SMMP_Scoring$
+$rFactor2SMMP_Telemetry$
+acpmf_crewchief
+acpmf_graphics
+acpmf_physics
+acpmf_static
+$pcars2$
+/Screenshots
+/tests
+.claude
+.vscode
+__pycache__
+/widgets/__pycache__
