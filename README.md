@@ -26,7 +26,7 @@ Select which one to read from with `--sim rf2` (default) or `--sim ac`.
 
 ## Hardware
 
-Talking to the panel itself is handled by [vocore-screen-py](https://github.com/Orangensaft/vocore-screen-py) (used here via a [patched fork](https://github.com/bitshift91/vocore-screen-py) with a numpy-vectorized `draw_image` and some PIL/numpy import fixes) — see [Installation](#installation) for how to get it.
+Talking to the panel itself is handled by [vocore-screen-py](https://github.com/Orangensaft/vocore-screen-py) (used here via a [patched fork](https://github.com/BenjaminRengle/vocore-screen-py.git) with a numpy-vectorized `draw_image` and some PIL/numpy import fixes) — see [Installation](#installation) for how to get it.
 
 ## Installation
 
@@ -56,17 +56,13 @@ Talking to the panel itself is handled by [vocore-screen-py](https://github.com/
    This pulls in Pillow (rendering), `evdev` (keyboard input), and the `vocore_screen` package (USB panel driver, which in turn needs `libusb`).
 
 3. **USB and input device permissions.** Both the screen and the keyboard used for widget-switching are read directly from device nodes, so your user needs access to them:
-   - **Screen (libusb):** add a udev rule so it's accessible without root — see the [vocore-screen-py README](https://github.com/Orangensaft/vocore-screen-py#linux).
-   - **Keyboard (evdev):** add your user to the `input` group and re-login:
-     ```sh
-     sudo usermod -aG input $USER
-     ```
+   - **Screen (libusb):** add a udev rule so it's accessible without root — see the [vocore-screen-py README](https://github.com/BenjaminRengle/vocore-screen-py.git).
 
 4. **Fonts.** Widgets render text with Open Sans (`/usr/share/fonts/open-sans/OpenSans-{Bold,Regular,Light}.ttf`). Install an `open-sans` package from your distro, or adjust the font paths in `widgets/*.py` to match wherever it's installed.
 
 ## Usage
 
-The simplest way to run it is through `launch.sh`, which also starts a small helper binary (`acshm`, built from a separate `simshmbridge` project via `make -f Makefile.ac`) to pre-size Assetto Corsa's shared-memory segments before the controller attaches to them. Point `SIMSHMBRIDGE_DIR` at wherever you've built it if it's not at `../simshmbridge`. rFactor2/LMU need no such helper — their own SMMP plugin creates its shared memory itself.
+The simplest way to run it is through `launch.sh`, which also starts a small helper binary (`acshm`, built from the following repository: https://github.com/Spacefreak18/simshmbridge.git) to pre-size Assetto Corsa's shared-memory segments before the controller attaches to them. Point `SIMSHMBRIDGE_DIR` at wherever you've built it if it's not at `../simshmbridge`. rFactor2/LMU need no such helper — their own SMMP plugin creates its shared memory itself.
 
 ```sh
 ./launch.sh rf2          # rFactor2 / Le Mans Ultimate
@@ -128,13 +124,6 @@ Each sim reader normalizes its raw shared-memory layout into the common `SimData
 2. Instantiate it in `VoCoreController.py` and add its name to `WIDGET_NAMES`.
 3. Add a branch for it in the render loop's `if active_widget == ...` chain.
 
-## Running tests
-
-```sh
-pip install pytest
-pytest tests/
-```
-
 ## Known limitations
 
 - Multiclass position indicator on the leaderboard/position badge doesn't account for class yet.
@@ -145,3 +134,5 @@ pytest tests/
 ## License
 
 GPL-3.0 — see [LICENSE](LICENSE).
+
+Special Thanks to https://github.com/Spacefreak18 who did all the work in his projects on how to read telemetry in the first place
