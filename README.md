@@ -35,7 +35,7 @@ Talking to the panel itself is handled by [vocore-screen-py](https://github.com/
 
    ```sh
    git clone https://github.com/BenjaminRengle/LinuxVoCoreController
-   git clone https://github.com/bitshift91/vocore-screen-py
+   git clone https://github.com/BenjaminRengle/vocore-screen-py
    ```
 
    Layout:
