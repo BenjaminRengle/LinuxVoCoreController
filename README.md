@@ -58,12 +58,19 @@ Talking to the panel itself is handled by [vocore-screen-py](https://github.com/
 
 3. **USB device permissions.** The screen is read directly from a device node, so your user needs access to it:
    - **Screen (libusb):** add a udev rule so it's accessible without root — see the [vocore-screen-py README](https://github.com/BenjaminRengle/vocore-screen-py.git).
+   
+   An example Udev rule could look like this:
+   SUBSYSTEM=="usb", ATTR{idVendor}=="c872", ATTR{idProduct}=="1004", MODE="0666", TAG+="uaccess" 
+   placed as /etc/udev/rules.d/73-vocore.rules
 
 4. **Fonts.** Widgets render text with Open Sans (`/usr/share/fonts/open-sans/OpenSans-{Bold,Regular,Light}.ttf`). Install an `open-sans` package from your distro, or adjust the font paths in `widgets/*.py` to match wherever it's installed.
+
 
 ## Usage
 
 The simplest way to run it is through `launch.sh`, which also starts a small helper binary (`acshm`, built from the following repository: https://github.com/Spacefreak18/simshmbridge.git) to pre-size Assetto Corsa's shared-memory segments before the controller attaches to them. Point `SIMSHMBRIDGE_DIR` at wherever you've built it if it's not at `../simshmbridge`. rFactor2/LMU need no such helper — their own SMMP plugin creates its shared memory itself.
+
+The default location for my machine was SIMSHMBRIDGE_DIR="${SIMSHMBRIDGE_DIR:-/home/bazzite/Documents/developement/simshmbridge}" for example
 
 ```sh
 ./launch.sh rf2          # rFactor2 / Le Mans Ultimate
