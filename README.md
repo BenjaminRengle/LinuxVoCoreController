@@ -47,14 +47,14 @@ Talking to the panel itself is handled by [vocore-screen-py](https://github.com/
 
    If you'd rather not use that layout, edit `requirements.txt` and point the `-e ../vocore-screen-py` line at wherever you checked it out (or swap it for a git URL).
 
-2. **Install Python dependencies** (Python 3.7+; a virtualenv is recommended):
+2. **Install Python dependencies** (Python 3.7+):
 
    ```sh
    cd LinuxVoCoreController
    pip install -r requirements.txt
    ```
 
-   This pulls in Pillow (rendering) and the `vocore_screen` package (USB panel driver, which in turn needs `libusb`).
+   This pulls in Pillow (rendering).
 
 3. **USB device permissions.** The screen is read directly from a device node, so your user needs access to it:
    - **Screen (libusb):** add a udev rule so it's accessible without root — see the [vocore-screen-py README](https://github.com/BenjaminRengle/vocore-screen-py.git).
