@@ -72,7 +72,10 @@ Talking to the panel itself is handled by [vocore-screen-py](https://github.com/
 
 The simplest way to run it is through `launch.sh`, which also starts a small helper binary (`acshm`, built from the following repository: https://github.com/Spacefreak18/simshmbridge.git) to pre-size Assetto Corsa's shared-memory segments before the controller attaches to them. Point `SIMSHMBRIDGE_DIR` at wherever you've built it if it's not at `../simshmbridge`. rFactor2/LMU need no such helper — their own SMMP plugin creates its shared memory itself.
 
-The default location for my machine was SIMSHMBRIDGE_DIR="${SIMSHMBRIDGE_DIR:-/home/bazzite/Documents/developement/simshmbridge}" for example
+The default location for my machine was:
+
+```SIMSHMBRIDGE_DIR="${SIMSHMBRIDGE_DIR:-/home/bazzite/Documents/developement/simshmbridge}"
+```
 
 ```sh
 ./launch.sh rf2          # rFactor2 / Le Mans Ultimate
