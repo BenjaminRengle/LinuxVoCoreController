@@ -5,3 +5,4 @@
 -e ../vocore-screen-py
 
 pillow
+evdev
