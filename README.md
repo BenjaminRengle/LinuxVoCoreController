@@ -13,6 +13,7 @@ The GUI is currently designed to fit the style of the EvilRank DID 4" Dashboard 
   - **Delta** — live time delta against your fastest clean lap this session, plus a projected lap time and a track-position progress bar.
   - **Leaderboard** — standings table windowed around your own position (POS / driver / best lap / gap), mirroring the sims' own overlays.
 - **Steady 30 FPS render loop**, paced instead of running flat out, since that's the panel's refresh ceiling.
+- **Optional controller-driven widget switching** — map buttons/D-pad on any `evdev` input device (e.g. a sim racing wheel) to next/prev/select, with the device path and button mapping fully user-supplied so it's not tied to specific hardware.
 
 ## Supported sims
 
@@ -54,9 +55,9 @@ Talking to the panel itself is handled by [vocore-screen-py](https://github.com/
    pip install -r requirements.txt
    ```
 
-   This pulls in Pillow (rendering).
+   This pulls in Pillow (rendering), `evdev` (controller input, only needed if you use `--controller-device`), and the `vocore_screen` package (USB panel driver, which in turn needs `libusb`).
 
-3. **USB device permissions.** The screen is read directly from a device node, so your user needs access to it:
+3. **Device permissions.** The screen and (optionally) the controller used for widget switching are read directly from device nodes, so your user needs access to them:
    - **Screen (libusb):** add a udev rule so it's accessible without root — see the [vocore-screen-py README](https://github.com/BenjaminRengle/vocore-screen-py.git).
    
    An example Udev rule could look like this:
@@ -64,6 +65,7 @@ Talking to the panel itself is handled by [vocore-screen-py](https://github.com/
    SUBSYSTEM=="usb", ATTR{idVendor}=="c872", ATTR{idProduct}=="1004", MODE="0666", TAG+="uaccess"
    ```
    placed as /etc/udev/rules.d/73-vocore.rules
+   - **Controller (evdev, optional):** your user needs read access to the `/dev/input/eventX` node — typically via membership in the `input` group (`sudo usermod -aG input $USER`, then re-login/reboot) or a udev rule.
 
 5. **Fonts.** Widgets render text with Open Sans (`/usr/share/fonts/open-sans/OpenSans-{Bold,Regular,Light}.ttf`). Install an `open-sans` package from your distro, or adjust the font paths in `widgets/*.py` to match wherever it's installed.
 
@@ -93,13 +95,37 @@ python3 VoCoreController.py --sim rf2
 | Flag | Default | Description |
 |---|---|---|
 | `--sim {rf2,ac}` | `rf2` | Which sim to read telemetry from. |
-| `--widget {fuel,revmeter,tires,delta,leaderboard}` | `fuel` | Which widget to display for the whole run. |
+| `--widget {fuel,revmeter,tires,delta,leaderboard}` | `fuel` | Which widget to display at startup. |
+| `--controller-device PATH` | *(none)* | Input device (e.g. a sim racing wheel) to use for widget switching. Omit to leave switching disabled. |
+| `--controller-button CODE=ACTION` | *(none)* | Map a controller button to `next`, `prev`, or `select:N`. Repeatable. |
+| `--controller-hat AXIS:VALUE=ACTION` | *(none)* | Map a D-pad/hat direction to `next`, `prev`, or `select:N`. Repeatable. |
 
 Extra arguments passed to `launch.sh` are forwarded to `VoCoreController.py`, e.g. `./launch.sh rf2 --widget fuel`.
 
 The controller waits for telemetry to become available (retrying every 5s) and only starts drawing once the sim reports a valid, in-session game phase (i.e. not stuck in menus/loading).
 
-Widget switching at runtime (e.g. via keyboard) has been removed for now — the display is locked to whichever widget is selected via `--widget`.
+### Controller-based widget switching
+
+Widget switching at runtime isn't tied to any specific keyboard or wheel — you point it at whichever `evdev` input device you want and say which buttons/D-pad directions should do what. With no `--controller-device`, the display just stays on whatever `--widget` was set to.
+
+1. **Find your device and its codes.** Install `evtest` (or read `cat /proc/bus/input/devices`), run it, pick your wheel/controller from the list, and press the buttons/D-pad directions you want to use — it prints the device path and the `BTN_*`/`ABS_*` code for each event:
+
+   ```sh
+   sudo evtest
+   ```
+
+2. **Map them on the command line.** `CODE`/`AXIS` accept either the symbolic evdev name (e.g. `BTN_TRIGGER`, `ABS_HAT0X`) or its raw numeric code; `ACTION` is `next`, `prev`, or `select:N` (`N` = 0-based index into `fuel, revmeter, tires, delta, leaderboard`):
+
+   ```sh
+   python3 VoCoreController.py --sim rf2 \
+     --controller-device /dev/input/by-id/usb-My_Wheel-event-joystick \
+     --controller-button BTN_TRIGGER=next \
+     --controller-button BTN_THUMB=prev \
+     --controller-hat ABS_HAT0X:1=next \
+     --controller-hat ABS_HAT0X:-1=prev
+   ```
+
+Buttons (`--controller-button`) fire on press; D-pad/hat directions (`--controller-hat`) fire when that axis reports the given value, so just leave the centered value (usually `0`) unmapped.
 
 ## Project structure
 
@@ -109,6 +135,7 @@ SimData.py              Sim-agnostic telemetry data structures (SimData, CarData
 RFactor2Data.py          rFactor2/LMU shared-memory reader → SimData
 AssettoCorsaData.py       Assetto Corsa shared-memory reader → SimData
 WidgetManager.py          Tracks which widget is currently active
+ControllerSwitcher.py     Background evdev listener queuing widget-switch commands from a controller
 widgets/
 ├── RevMeter.py           Rev meter / gear / speed
 ├── FuelInfo.py           Fuel level & consumption estimates
@@ -132,7 +159,6 @@ Each sim reader normalizes its raw shared-memory layout into the common `SimData
 - Multiclass position indicator on the leaderboard/position badge doesn't account for class yet.
 - No "classic" start screen while waiting for telemetry.
 - Remaining session time/laps aren't shown.
-- Rev meter's shift warning currently triggers earlier than intended.
 
 ## License
 
