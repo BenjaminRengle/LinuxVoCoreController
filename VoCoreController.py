@@ -8,6 +8,7 @@ from widgets.DeltaInfo import DeltaInfo
 from RFactor2Data import *
 from AssettoCorsaData import ACTelemetryReader
 from WidgetManager import WidgetManager
+from ControllerSwitcher import ControllerSwitcher, resolve_code
 from PIL import ImageFont,Image, ImageDraw
 from time import sleep, perf_counter
 from vocore_screen import screen
@@ -21,8 +22,19 @@ from vocore_screen import screen
 # - Qualifying Review ( fuel to use)
 # - Classic start screen if no telemetry data is available
 # - Remaining session time and laps
-# - Revmeter blinks way too early
 # - qualify and 00:00 time left show summary of qualifying session (best lap, fuel used, laps completed)
+# - Lap timer currently does not work correctly. Always jumps between +0.0 and -0.0
+
+#Controller switcher bug when turning a specific knob on the wheel:
+# ControllerSwitcher: listener crashed for /dev/input/by-id/usb-Cube_Controls_F-CORE_0000-event-joystick
+# Traceback (most recent call last):
+#   File "/var/home/bazzite/Documents/developement/LinuxVoCoreController/ControllerSwitcher.py", line 70, in _listen
+#     key_event = evdev.categorize(event)
+#   File "/usr/lib64/python3.14/site-packages/evdev/util.py", line 45, in categorize
+#     return event_factory[event.type](event)
+#            ~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^
+#   File "/usr/lib64/python3.14/site-packages/evdev/events.py", line 105, in __init__
+#     self.keycode = keys[event.code]
 
 
 def rotate_image_for_screen(image):
@@ -148,6 +160,52 @@ TARGET_FPS = 30
 FRAME_INTERVAL = 1.0 / TARGET_FPS
 
 
+def parse_action(text):
+    """Parse an action spec: 'next', 'prev', or 'select:N' (N = 0-based
+    index into WIDGET_NAMES)."""
+    if text in ("next", "prev"):
+        return (text, None)
+    if text.startswith("select:"):
+        try:
+            index = int(text.split(":", 1)[1])
+        except ValueError:
+            raise argparse.ArgumentTypeError(f"invalid widget index in '{text}'")
+        return ("select", index)
+    raise argparse.ArgumentTypeError(
+        f"invalid action '{text}' (expected 'next', 'prev', or 'select:N')"
+    )
+
+
+def parse_controller_button(text):
+    """Parse a --controller-button spec of the form CODE=ACTION."""
+    if "=" not in text:
+        raise argparse.ArgumentTypeError(
+            f"invalid --controller-button '{text}' (expected CODE=ACTION)"
+        )
+    code_text, action_text = text.split("=", 1)
+    try:
+        code = resolve_code(code_text)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError(str(exc))
+    return (code, parse_action(action_text))
+
+
+def parse_controller_hat(text):
+    """Parse a --controller-hat spec of the form AXIS:VALUE=ACTION."""
+    if "=" not in text or ":" not in text:
+        raise argparse.ArgumentTypeError(
+            f"invalid --controller-hat '{text}' (expected AXIS:VALUE=ACTION)"
+        )
+    axis_value_text, action_text = text.split("=", 1)
+    axis_text, value_text = axis_value_text.split(":", 1)
+    try:
+        axis_code = resolve_code(axis_text)
+        value = int(value_text)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError(str(exc))
+    return ((axis_code, value), parse_action(action_text))
+
+
 def parse_args():
     parser = argparse.ArgumentParser(description="VoCore telemetry display controller")
     parser.add_argument(
@@ -165,8 +223,47 @@ def parse_args():
         choices=WIDGET_NAMES,
         default=WIDGET_NAMES[0],
         help=(
-            "Which widget to display for the whole run "
-            f"(default: {WIDGET_NAMES[0]})."
+            "Which widget to display at startup "
+            f"(default: {WIDGET_NAMES[0]}). Order: {', '.join(WIDGET_NAMES)}."
+        ),
+    )
+    parser.add_argument(
+        "--controller-device",
+        default=None,
+        help=(
+            "Path to a game controller/wheel input device (e.g. something "
+            "under /dev/input/by-id/) to use for widget switching. Find "
+            "yours and its button/axis codes with `evtest` or "
+            "`cat /proc/bus/input/devices`. If omitted, widget switching "
+            "stays disabled."
+        ),
+    )
+    parser.add_argument(
+        "--controller-button",
+        action="append",
+        default=[],
+        type=parse_controller_button,
+        metavar="CODE=ACTION",
+        help=(
+            "Map a controller button to an action. CODE is an evdev key "
+            "code, symbolic (e.g. BTN_TRIGGER) or numeric. ACTION is "
+            "'next', 'prev', or 'select:N' (N = 0-based widget index, see "
+            "--widget's order). Repeatable. Example: "
+            "--controller-button BTN_TRIGGER=next"
+        ),
+    )
+    parser.add_argument(
+        "--controller-hat",
+        action="append",
+        default=[],
+        type=parse_controller_hat,
+        metavar="AXIS:VALUE=ACTION",
+        help=(
+            "Map a D-pad/hat direction to an action. AXIS is an evdev abs "
+            "code, symbolic (e.g. ABS_HAT0X) or numeric, VALUE is the "
+            "value reported for that direction (usually -1 or 1). ACTION "
+            "is 'next', 'prev', or 'select:N'. Repeatable. Example: "
+            "--controller-hat ABS_HAT0X:1=next"
         ),
     )
     return parser.parse_args()
@@ -182,10 +279,28 @@ fuelInfo = FuelInfo()
 deltaInfo = DeltaInfo()
 leaderboardInfo = LeaderboardInfo()
 
-# Widget switching is disabled for now; the display is locked to whichever
-# widget is selected via --widget for the whole run.
+# --widget picks the widget shown at startup; if --controller-device and
+# some --controller-button/--controller-hat mappings are given, it can be
+# switched at runtime from a game controller (e.g. buttons/D-pad on a sim
+# racing wheel). With no --controller-device, the display just stays on the
+# --widget one for the whole run.
 widgetManager = WidgetManager(WIDGET_NAMES)
 widgetManager.select(args.widget)
+
+controllerSwitcher = None
+if args.controller_device:
+    try:
+        controllerSwitcher = ControllerSwitcher(
+            args.controller_device,
+            button_map=dict(args.controller_button),
+            hat_map=dict(args.controller_hat),
+        )
+    except OSError as exc:
+        raise SystemExit(
+            f"error: cannot open controller device '{args.controller_device}': {exc}\n"
+            "Check the path and that your user has permission (member of "
+            "the 'input' group, or a udev rule)."
+        )
 
 #TireTester(screen)  # Run the TireTester function to test the tire info display
 #RevTester(screen)  # Run the RevTester function to test the rev meter display
@@ -209,6 +324,16 @@ try:
             sleep(sleep_time)
         next_frame_time = max(now, next_frame_time) + FRAME_INTERVAL
 
+        if controllerSwitcher is not None:
+            for command, value in controllerSwitcher.drain_commands():
+                if command == "next":
+                    widgetManager.next()
+                elif command == "prev":
+                    widgetManager.prev()
+                elif command == "select":
+                    widgetManager.select(value)
+                print(f"Active widget: {widgetManager.current}")
+
         simData = telemetryReader.read()  # Read the telemetry data
 
         # update the screen with the telemetry data
@@ -222,6 +347,13 @@ try:
             delta = deltaInfo.get_delta(simData)
             estimated_lap_seconds = deltaInfo.get_estimated_lap_seconds(simData)
             estimated_lap = seconds_to_lap_time(estimated_lap_seconds) if estimated_lap_seconds is not None else None
+            print(
+                f"[delta-debug] spline={simData.playerspline:.4f} "
+                f"time_into_lap={deltaInfo._laptime_seconds(simData.currentlap)} "
+                f"ref_total={deltaInfo._reference_total_time} "
+                f"ref_samples={len(deltaInfo._reference_samples) if deltaInfo._reference_samples else 0} "
+                f"delta={delta}"
+            )
 
             last_lap_fuel = fuelInfo.record_last_lap_fuel_usage(simData)
             avg_per_lap = fuelInfo.calc_average_fuel_per_lap()
@@ -285,4 +417,6 @@ try:
             #draw image on screen and update the display
             screen.draw_image(img)
 finally:
+    if controllerSwitcher is not None:
+        controllerSwitcher.close()
     telemetryReader.close()  # Close the telemetry data
