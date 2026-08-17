@@ -1,4 +1,3 @@
-import time
 from PIL import ImageFont
 
 class RevMeter:
@@ -36,12 +35,11 @@ class RevMeter:
             fill=(0,0,0)
         )
 
-        warning_threshold = 0.90
+        warning_threshold = 0.95
         if fraction >= warning_threshold:
-            blink_on = int(time.time() * 8) % 2 == 0
-            fill_color = (255, 0, 0) if blink_on else (0, 0, 0)
+            fill_color = (255, 0, 0)
         else:
-            fill_color = (180, 60, 20)
+            fill_color = (255, 140, 0)
 
         draw.rectangle(
             (160, top, 780, 480),
