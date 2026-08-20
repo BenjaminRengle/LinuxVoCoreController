@@ -400,8 +400,23 @@ class RF2TelemetryReader:
                 player_index = index
                 break
 
-        vehicle = self.telemetry.mVehicles[player_index]
         scoring_vehicle = self.scoring.mVehicles[player_index]
+
+        # The telemetry and scoring vehicle arrays are populated independently
+        # by rF2 and aren't guaranteed to share index order (scoring is sorted
+        # by race position, which changes as cars overtake) - match by mID
+        # instead of assuming telemetry[i] and scoring[i] are the same car.
+        # Getting this wrong means fields read from `vehicle` (e.g. lap
+        # number) can intermittently come from a different car than the one
+        # `scoring_vehicle` (e.g. spline position) reflects.
+        telemetry_count = int(self.telemetry.mNumVehicles)
+        telemetry_by_id = {
+            int(self.telemetry.mVehicles[index].mID): index
+            for index in range(min(telemetry_count, 64))
+        }
+        vehicle = self.telemetry.mVehicles[
+            telemetry_by_id.get(int(scoring_vehicle.mID), player_index)
+        ]
 
         #sim_data.playerVehicle = scoring_vehicle
 
@@ -450,11 +465,24 @@ class RF2TelemetryReader:
         sim_data.tracksamples = int(trackdist * 4) if trackdist > 0 else 0
         sim_data.playerspline = pos / trackdist if trackdist > 0 else 0.0
 
-        sim_data.lap = int(vehicle.mLapNumber) + 1
+        # Use the scoring buffer's own lap count rather than telemetry's
+        # mLapNumber: telemetry and scoring are independent snapshots that
+        # can be a tick or more out of sync, so pairing a telemetry lap
+        # number with a scoring-derived spline/time-into-lap can make the
+        # lap-number flip land in a different tick than spline reaching the
+        # finish line - which broke DeltaInfo's end-of-lap detection.
+        sim_data.lap = int(scoring_vehicle.mTotalLaps) + 1
         sim_data.position = int(scoring_vehicle.mPlace)
         sim_data.lastlap = rf2_convert_to_simdata_laptime(scoring_vehicle.mLastLapTime)
         sim_data.bestlap = rf2_convert_to_simdata_laptime(scoring_vehicle.mBestLapTime)
-        sim_data.currentlap = rf2_convert_to_simdata_laptime(scoring_vehicle.mTimeIntoLap)
+        # mTimeIntoLap is documented by the rF2 SDK as an *estimate* based on
+        # expected pace at the current track position, not a live stopwatch -
+        # it doesn't react to an actual slowdown until the lap boundary
+        # snaps to mLastLapTime. mCurrentET and mLapStartET are both real
+        # elapsed-time fields from the same scoring snapshot, so their
+        # difference is the true, live time spent in this lap.
+        time_into_lap = float(self.scoring.mScoringInfo.mCurrentET) - float(scoring_vehicle.mLapStartET)
+        sim_data.currentlap = rf2_convert_to_simdata_laptime(max(0.0, time_into_lap))
         sim_data.numlaps = int(self.scoring.mScoringInfo.mMaxLaps)
         sim_data.sectorindex = _coerce_int_value(scoring_vehicle.mSector)
         sim_data.playerflag = _coerce_int_value(scoring_vehicle.mFlag)
@@ -474,9 +502,14 @@ class RF2TelemetryReader:
 
         sim_data.playercardata = self._build_rfactor2_car_data(vehicle, scoring_vehicle)
 
-        grid_count = min(scoring_count, int(self.telemetry.mNumVehicles), 64, MAXCARS)
+        grid_count = min(scoring_count, 64, MAXCARS)
         sim_data.cars = [
-            self._build_rfactor2_car_data(self.telemetry.mVehicles[index], self.scoring.mVehicles[index])
+            self._build_rfactor2_car_data(
+                self.telemetry.mVehicles[
+                    telemetry_by_id.get(int(self.scoring.mVehicles[index].mID), index)
+                ],
+                self.scoring.mVehicles[index],
+            )
             for index in range(grid_count)
         ]
         sim_data.numcars = grid_count
@@ -498,7 +531,7 @@ class RF2TelemetryReader:
 
         car_data.speed = float(abs(round(3.6 * vehicle.mLocalVel.z)))
         car_data.pos = int(lap_distance)
-        car_data.lap = int(vehicle.mLapNumber) + 1
+        car_data.lap = int(scoring_vehicle.mTotalLaps) + 1
         car_data.place = int(scoring_vehicle.mPlace)
         car_data.timebehindleader = float(scoring_vehicle.mTimeBehindLeader)
 

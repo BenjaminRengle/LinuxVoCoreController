@@ -33,6 +33,11 @@ class DeltaInfo:
             24
         )
 
+        self.font_value = ImageFont.truetype(
+            "/usr/share/fonts/open-sans/OpenSans-Bold.ttf",
+            52
+        )
+
         self._last_lap_num = None
         self._current_samples = []
         self._pit_seen_this_lap = False
@@ -87,7 +92,15 @@ class DeltaInfo:
         self._pit_seen_this_lap = self._pit_seen_this_lap or self._car_in_pit(sim_data)
 
         if current_lap_num != self._last_lap_num:
-            self._finalize_lap(sim_data)
+            # A genuine lap completion means the last sample recorded was
+            # near the finish line (spline ~1.0). If the lap number changed
+            # while we were still early in the lap, it's a spurious/glitchy
+            # reading (e.g. a transient telemetry misread) rather than a
+            # real lap boundary - discard the fragment instead of finalizing
+            # a bogus reference lap from a handful of samples.
+            last_spline = self._current_samples[-1][0] if self._current_samples else 0.0
+            if last_spline >= 0.9:
+                self._finalize_lap(sim_data)
             self._last_lap_num = current_lap_num
             self._current_samples = [(0.0, 0.0)]
             self._pit_seen_this_lap = self._car_in_pit(sim_data)
@@ -106,7 +119,16 @@ class DeltaInfo:
         ):
             return
 
-        samples = list(self._current_samples)
+        # Guard against a wrapped/out-of-order tail sample (e.g. the track
+        # spline resetting to ~0.0 for a tick before the lap-number flip is
+        # observed) - the binary search in _interpolate_reference_time
+        # assumes samples are sorted ascending by spline, so a stray point
+        # here would silently corrupt lookups for the rest of the session.
+        samples = []
+        for point in self._current_samples:
+            if samples and point[0] < samples[-1][0]:
+                continue
+            samples.append(point)
         samples.append((1.0, lastlap_seconds))
 
         if self._reference_total_time is None or lastlap_seconds < self._reference_total_time:
@@ -171,13 +193,34 @@ class DeltaInfo:
 
     def _format_delta(self, delta):
         if delta is None:
-            return "--.-"
-        return f"{delta:+.1f}"
+            return "--.---"
+        return f"{delta:+.3f}"
 
     def _bar_color(self, delta):
         if delta is None:
             return (150, 150, 150)
-        return (0, 200, 0) if delta <= 0 else (230, 70, 70)
+        return (140, 205, 60) if delta <= 0 else (220, 70, 70)
+
+    def _text_color_for_background(self, bg_color):
+        """Pick black or white text for readable contrast on a chip color."""
+        r, g, b = bg_color
+        luminance = 0.299 * r + 0.587 * g + 0.114 * b
+        return (20, 20, 20) if luminance > 140 else (245, 245, 245)
+
+    def _draw_chip(self, draw, x, y, width, height, text, bg_color, font):
+        """Draw a rounded, filled label pill with centered text."""
+        draw.rounded_rectangle(
+            (x, y, x + width, y + height),
+            radius=height / 2,
+            fill=bg_color,
+        )
+        draw.text(
+            (x + width / 2, y + height / 2),
+            text,
+            anchor="mm",
+            font=font,
+            fill=self._text_color_for_background(bg_color),
+        )
 
     def _format_time(self, lap_time):
         if lap_time is None:
@@ -192,7 +235,7 @@ class DeltaInfo:
 
         if hours > 0:
             return f"{hours}:{minutes:02d}:{seconds:02d}.{milliseconds:03d}"
-        return f"{minutes:02d}:{seconds:02d}.{milliseconds:03d}"
+        return f"{minutes}:{seconds:02d}.{milliseconds:03d}"
 
     def draw(
         self,
@@ -210,11 +253,10 @@ class DeltaInfo:
         """Draw current delta information and lap timing details."""
         width = 640
         height = 460
-        bar_height = 24
-        padding = 14
+        padding = 20
 
         background_color = (10, 10, 10)
-        frame_color = (230, 230, 230)
+        frame_color = (60, 60, 60)
         accent_color = self._bar_color(delta)
 
         draw.rounded_rectangle(
@@ -222,73 +264,80 @@ class DeltaInfo:
             radius=24,
             fill=background_color,
             outline=frame_color,
-            width=3,
+            width=2,
         )
 
+        # Big delta readout, centered.
         delta_text = self._format_delta(delta)
         draw.text(
-            (x + width * 0.46, y + padding),
+            (x + width / 2, y + 4),
             delta_text,
             anchor="ma",
             font=self.font_delta,
             fill="white",
         )
 
-        draw.text(
-            (x + width * 0.66, y + padding + 110),
-            label,
-            anchor="ma",
-            font=self.font_label,
-            fill="white",
-        )
-
-        info_items = [
-            ("LAP TIMER", self._format_time(lap_time)),
-            ("EST. LAP", self._format_time(estimated_lap)),
-            ("LAST LAP", self._format_time(last_lap)),
-            ("BEST LAP", self._format_time(best_lap)),
-        ]
-
-        row_y = y + padding
-        for index, (row_label, row_value) in enumerate(info_items):
-            text_y = row_y + 140 + index * 60
-            draw.text(
-                (x + padding, text_y),
-                row_label,
-                anchor="lm",
-                font=self.font_label,
-                fill="white",
-            )
-            draw.text(
-                (x + width - padding, text_y),
-                row_value,
-                anchor="rm",
-                font=self.font_label,
-                fill="white",
-            )
-
+        # Reference-lap progress bar with sector tick marks, echoing a
+        # delta-bar HUD readout.
+        bar_height = 22
         bar_x = x + padding
-        bar_y = y + height - padding - bar_height
+        bar_y = y + padding + 96
         bar_width = width - padding * 2
-        filled_width = max(0, min(bar_width, int(bar_width * bar_fraction)))
 
-        draw.rectangle(
+        draw.rounded_rectangle(
             (bar_x, bar_y, bar_x + bar_width, bar_y + bar_height),
+            radius=bar_height / 2,
             outline=frame_color,
             width=2,
             fill=(0, 0, 0),
         )
 
+        filled_width = max(0, min(bar_width, int(bar_width * bar_fraction)))
         if filled_width > 0:
-            draw.rectangle(
+            draw.rounded_rectangle(
                 (bar_x, bar_y, bar_x + filled_width, bar_y + bar_height),
+                radius=bar_height / 2,
                 fill=accent_color,
             )
 
-        draw.text(
-            (x + width - padding, bar_y + bar_height / 2),
-            "",
-            anchor="rm",
-            font=self.font_small,
-            fill="white",
-        )
+        for fraction in (0.25, 0.5, 0.75):
+            tick_x = bar_x + bar_width * fraction
+            draw.line(
+                (tick_x, bar_y, tick_x, bar_y + bar_height),
+                fill=(230, 230, 230),
+                width=2,
+            )
+
+        # Colored label chips + big values for each timing row.
+        info_rows = [
+            ("LAP TIMER", self._format_time(lap_time), (0, 200, 235)),
+            ("EST. LAP", self._format_time(estimated_lap), (110, 210, 60)),
+            ("LAST LAP", self._format_time(last_lap), (235, 195, 40)),
+            ("BEST LAP", self._format_time(best_lap), (150, 60, 200)),
+        ]
+
+        rows_top = bar_y + bar_height + 36
+        rows_bottom = y + height - padding
+        row_height = (rows_bottom - rows_top) / len(info_rows)
+        chip_row_width = 220
+        chip_row_height = min(50, row_height - 10)
+
+        for index, (row_label, row_value, chip_color) in enumerate(info_rows):
+            row_center_y = rows_top + row_height * index + row_height / 2
+            self._draw_chip(
+                draw,
+                x + padding,
+                row_center_y - chip_row_height / 2,
+                chip_row_width,
+                chip_row_height,
+                row_label,
+                chip_color,
+                self.font_label,
+            )
+            draw.text(
+                (x + width - padding, row_center_y),
+                row_value,
+                anchor="rm",
+                font=self.font_value,
+                fill="white",
+            )
