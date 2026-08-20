@@ -160,6 +160,8 @@ class SimData:
     sector2time: float = 0.0
     lastsectorinms: int = 0
     gamephase: int = 0
+    currentet: float = 0.0
+    endet: float = 0.0
     playerflag: int = 0
     playercardata: CarData = field(default_factory=CarData)
     lapisvalid: bool = False
