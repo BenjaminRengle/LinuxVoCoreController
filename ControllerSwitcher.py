@@ -67,8 +67,12 @@ class ControllerSwitcher:
                 if self._stop.is_set():
                     return
                 if event.type == ecodes.EV_KEY:
-                    key_event = evdev.categorize(event)
-                    if key_event.keystate != key_event.key_down:
+                    # Avoid evdev.categorize(): it looks event.code up in a
+                    # fixed name table and raises KeyError for button codes
+                    # the kernel headers left unnamed (some wheels send
+                    # these) - we only need the raw value, so check it
+                    # directly. 1 = pressed, 0 = released, 2 = autorepeat.
+                    if event.value != 1:
                         continue
                     self._dispatch(self._button_map.get(event.code))
                 elif event.type == ecodes.EV_ABS:
