@@ -15,6 +15,10 @@ The GUI is currently designed to fit the style of the EvilRank DID 4" Dashboard 
 - **Steady 30 FPS render loop**, paced instead of running flat out, since that's the panel's refresh ceiling.
 - **Optional controller-driven widget switching** — map buttons/D-pad on any `evdev` input device (e.g. a sim racing wheel) to next/prev/select, with the device path and button mapping fully user-supplied so it's not tied to specific hardware.
 
+## Screenshots
+
+![alt text](https://github.com/BenjaminRengle/LinuxVoCoreController/blob/main/GuiScreenshots/revmeter.jpg "Revmeter"
+
 ## Supported sims
 
 | Sim | How telemetry is read |
