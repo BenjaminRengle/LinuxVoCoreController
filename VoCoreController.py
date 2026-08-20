@@ -341,19 +341,11 @@ try:
         draw = ImageDraw.Draw(img)
 
         if simData.gamephase > GamePhase.BEFORE_SESSION:  # Check if the simulation is in a valid game phase (not in menus or loading)
-            print(f"Game Phase: {simData.gamephase}, Session: {simData.session}")
 
             deltaInfo.record_sample(simData)
             delta = deltaInfo.get_delta(simData)
             estimated_lap_seconds = deltaInfo.get_estimated_lap_seconds(simData)
             estimated_lap = seconds_to_lap_time(estimated_lap_seconds) if estimated_lap_seconds is not None else None
-            print(
-                f"[delta-debug] spline={simData.playerspline:.4f} "
-                f"time_into_lap={deltaInfo._laptime_seconds(simData.currentlap)} "
-                f"ref_total={deltaInfo._reference_total_time} "
-                f"ref_samples={len(deltaInfo._reference_samples) if deltaInfo._reference_samples else 0} "
-                f"delta={delta}"
-            )
 
             last_lap_fuel = fuelInfo.record_last_lap_fuel_usage(simData)
             avg_per_lap = fuelInfo.calc_average_fuel_per_lap()
@@ -388,6 +380,7 @@ try:
                     [simData.tyretemp[0], simData.tyretemp[1], simData.tyretemp[2], simData.tyretemp[3]],
                     [simData.tyrewear[0], simData.tyrewear[1], simData.tyrewear[2], simData.tyrewear[3]],
                     [simData.tyreslipratio[0], simData.tyreslipratio[1], simData.tyreslipratio[2], simData.tyreslipratio[3]],
+                    compound=simData.tyrecompound,
                 )
             elif active_widget == "delta":
                 deltaInfo.draw(
