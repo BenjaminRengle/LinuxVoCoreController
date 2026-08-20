@@ -17,7 +17,7 @@ The GUI is currently designed to fit the style of the EvilRank DID 4" Dashboard 
 
 ## Screenshots
 
-![alt text](https://github.com/BenjaminRengle/LinuxVoCoreController/blob/main/GuiScreenshots/revmeter.jpg "Revmeter"
+![alt text](https://github.com/BenjaminRengle/LinuxVoCoreController/blob/main/GuiScreenshots/revmeter.jpg "Revmeter")
 
 ## Supported sims
 
