@@ -15,10 +15,6 @@ from PIL import ImageFont,Image, ImageDraw
 from time import sleep, perf_counter
 from vocore_screen import screen
 
-    
-
-#from screen import VocoreScreen
-#https://www.fullpace-simracing.com/logicrank.html
 
 #things to add:
 # - Qualifying Review ( fuel to use)
