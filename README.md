@@ -16,8 +16,21 @@ The GUI is currently designed to fit the style of the EvilRank DID 4" Dashboard 
 - **Optional controller-driven widget switching** — map buttons/D-pad on any `evdev` input device (e.g. a sim racing wheel) to next/prev/select, with the device path and button mapping fully user-supplied so it's not tied to specific hardware.
 
 ## Screenshots
-
+Revmeter: 
 ![alt text](https://github.com/BenjaminRengle/LinuxVoCoreController/blob/main/GuiScreenshots/revmeter.jpg "Revmeter")
+
+Delta Info:
+![alt text](https://github.com/BenjaminRengle/LinuxVoCoreController/blob/main/GuiScreenshots/delta.jpg)
+
+Leaderboard:
+![alt text](https://github.com/BenjaminRengle/LinuxVoCoreController/blob/main/GuiScreenshots/leaderboard.jpg)
+
+Tire Info:
+![alt text](https://github.com/BenjaminRengle/LinuxVoCoreController/blob/main/GuiScreenshots/tireScreen.jpg)
+
+Qualifying Review:
+![alt text](https://github.com/BenjaminRengle/LinuxVoCoreController/blob/main/GuiScreenshots/QualifyingReview.jpg)
+
 
 ## Supported sims
 
