@@ -5,6 +5,8 @@ from widgets.LeaderboardInfo import LeaderboardInfo
 from widgets.RevMeter import RevMeter
 from widgets.TireInfo import TireInfo
 from widgets.DeltaInfo import DeltaInfo
+from widgets.QualifySummaryInfo import QualifySummaryInfo
+from widgets.ReadyInfo import ReadyInfo
 from RFactor2Data import *
 from AssettoCorsaData import ACTelemetryReader
 from WidgetManager import WidgetManager
@@ -23,18 +25,6 @@ from vocore_screen import screen
 # - Classic start screen if no telemetry data is available
 # - Remaining session time and laps
 # - qualify and 00:00 time left show summary of qualifying session (best lap, fuel used, laps completed)
-# - Lap timer currently does not work correctly. Always jumps between +0.0 and -0.0
-
-#Controller switcher bug when turning a specific knob on the wheel:
-# ControllerSwitcher: listener crashed for /dev/input/by-id/usb-Cube_Controls_F-CORE_0000-event-joystick
-# Traceback (most recent call last):
-#   File "/var/home/bazzite/Documents/developement/LinuxVoCoreController/ControllerSwitcher.py", line 70, in _listen
-#     key_event = evdev.categorize(event)
-#   File "/usr/lib64/python3.14/site-packages/evdev/util.py", line 45, in categorize
-#     return event_factory[event.type](event)
-#            ~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^
-#   File "/usr/lib64/python3.14/site-packages/evdev/events.py", line 105, in __init__
-#     self.keycode = keys[event.code]
 
 
 def rotate_image_for_screen(image):
@@ -154,7 +144,7 @@ def FuelTester(screen):
         screen.draw_image(img)
 
 
-WIDGET_NAMES = ["fuel", "revmeter", "tires", "delta", "leaderboard"]
+WIDGET_NAMES = ["fuel", "revmeter", "tires", "delta", "leaderboard", "qualifysummary"]
 SIM_NAMES = ["rf2", "ac"]
 TARGET_FPS = 30
 FRAME_INTERVAL = 1.0 / TARGET_FPS
@@ -278,6 +268,8 @@ tireInfo = TireInfo()
 fuelInfo = FuelInfo()
 deltaInfo = DeltaInfo()
 leaderboardInfo = LeaderboardInfo()
+qualifySummaryInfo = QualifySummaryInfo()
+readyInfo = ReadyInfo()
 
 # --widget picks the widget shown at startup; if --controller-device and
 # some --controller-button/--controller-hat mappings are given, it can be
@@ -400,6 +392,20 @@ try:
                     simData.cars, simData.position
                 )
                 leaderboardInfo.draw(draw, standings)
+            elif active_widget == "qualifysummary":
+                print(
+                    f"[qualifysummary-debug] session={simData.session} "
+                    f"gamephase={simData.gamephase} "
+                    f"mCurrentET={simData.currentet:.3f} "
+                    f"mEndET={simData.endet:.3f} "
+                    f"mMaxLaps={simData.numlaps}"
+                )
+                qualifySummaryInfo.draw(
+                    draw,
+                    best_lap=simData.bestlap,
+                    position=simData.position,
+                    fuel_per_lap=avg_per_lap,
+                )
 
             #draw the EvilRank specific rectangles on the left side of the display
             draw.rectangle((0, 50, 120, 200), fill=(255, 0, 0) )#red circle on the left side of the evilrank display. Starting at coordinate 0,0 spanning to 100,200 in ABSOLUTE Values.
@@ -408,6 +414,17 @@ try:
             drawPositionIndicator(draw, simData.position)#currently shows the wrong value for multiclass
             img = mirror_image_for_screen(img)
             #draw image on screen and update the display
+            screen.draw_image(img)
+        else:
+            # No live telemetry (still in menus, waiting for a session) -
+            # show a static idle screen instead of leaving the display on
+            # a stale or plain black frame.
+            readyInfo.draw(draw)
+            #draw the EvilRank specific rectangles on the left side of the display
+            draw.rectangle((0, 50, 120, 200), fill=(255, 0, 0) )#red circle on the left side of the evilrank display. Starting at coordinate 0,0 spanning to 100,200 in ABSOLUTE Values.
+            draw.rectangle((0, 180, 120, 280), fill=(95,220,40) )#green circle on the left side of the evilrank display
+
+            img = mirror_image_for_screen(img)
             screen.draw_image(img)
 finally:
     if controllerSwitcher is not None:
