@@ -484,6 +484,8 @@ class RF2TelemetryReader:
         time_into_lap = float(self.scoring.mScoringInfo.mCurrentET) - float(scoring_vehicle.mLapStartET)
         sim_data.currentlap = rf2_convert_to_simdata_laptime(max(0.0, time_into_lap))
         sim_data.numlaps = int(self.scoring.mScoringInfo.mMaxLaps)
+        sim_data.currentet = float(self.scoring.mScoringInfo.mCurrentET)
+        sim_data.endet = float(self.scoring.mScoringInfo.mEndET)
         sim_data.sectorindex = _coerce_int_value(scoring_vehicle.mSector)
         sim_data.playerflag = _coerce_int_value(scoring_vehicle.mFlag)
         sim_data.gamephase = _coerce_int_value(self.scoring.mScoringInfo.mGamePhase)
