@@ -20,19 +20,19 @@ The GUI is currently designed to fit the style of the EvilRank DID 4" Dashboard 
 
 ![alt text](https://github.com/BenjaminRengle/LinuxVoCoreController/blob/main/GuiScreenshots/revmeter.jpg)
 
-Delta Info:
+**Delta Info**:
 
 ![alt text](https://github.com/BenjaminRengle/LinuxVoCoreController/blob/main/GuiScreenshots/delta.jpg)
 
-Leaderboard:
+**Leaderboard**:
 
-![alt text](https://github.com/BenjaminRengle/LinuxVoCoreController/blob/main/GuiScreenshots/leaderboard.jpg)
+![alt text](https://github.com/BenjaminRengle/LinuxVoCoreController/blob/main/GuiScreenshots/leaderbaord.jpg)
 
-Tire Info:
+**Tire Info**:
 
 ![alt text](https://github.com/BenjaminRengle/LinuxVoCoreController/blob/main/GuiScreenshots/tireScreen.jpg)
 
-Qualifying Review:
+**Qualifying Review**:
 
 ![alt text](https://github.com/BenjaminRengle/LinuxVoCoreController/blob/main/GuiScreenshots/QualifyingReview.jpg)
 
