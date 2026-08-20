@@ -52,6 +52,16 @@ class LeaderboardInfo:
             return ""
         return f"{gap_seconds:+.2f}"
 
+    def _truncate_text(self, draw, text, font, max_width):
+        """Shorten text with a trailing ellipsis so it never overruns max_width."""
+        if draw.textlength(text, font=font) <= max_width:
+            return text
+        ellipsis = "…"
+        truncated = text
+        while truncated and draw.textlength(truncated + ellipsis, font=font) > max_width:
+            truncated = truncated[:-1]
+        return (truncated + ellipsis) if truncated else ellipsis
+
     def build_standings(self, cars, player_place, visible_rows=None):
         """Turn a raw car list into the windowed, gap-annotated rows draw() expects.
 
@@ -153,17 +163,23 @@ class LeaderboardInfo:
                 fill="white",
             )
 
+            best_lap_x = x + width - 160
+            best_lap_text = self._format_time(row["best_lap"])
+            best_lap_width = draw.textlength(best_lap_text, font=self.font_row)
+
+            driver_max_width = (best_lap_x - best_lap_width) - (x + 90) - 20
+            driver_text = self._truncate_text(draw, row["driver"] or "-", self.font_row, driver_max_width)
             draw.text(
                 (x + 90, row_y + row_height / 2),
-                row["driver"] or "-",
+                driver_text,
                 anchor="lm",
                 font=self.font_row,
                 fill="white",
             )
 
             draw.text(
-                (x + width - 100, row_y + row_height / 2),
-                self._format_time(row["best_lap"]),
+                (best_lap_x, row_y + row_height / 2),
+                best_lap_text,
                 anchor="rm",
                 font=self.font_row,
                 fill=(190, 140, 255),
