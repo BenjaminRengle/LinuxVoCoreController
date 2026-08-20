@@ -81,13 +81,15 @@ Talking to the panel itself is handled by [vocore-screen-py](https://github.com/
 
 3. **Device permissions.** The screen and (optionally) the controller used for widget switching are read directly from device nodes, so your user needs access to them:
    - **Screen (libusb):** add a udev rule so it's accessible without root — see the [vocore-screen-py README](https://github.com/BenjaminRengle/vocore-screen-py.git).
-   
+
    An example Udev rule could look like this:
    ```
    SUBSYSTEM=="usb", ATTR{idVendor}=="c872", ATTR{idProduct}=="1004", MODE="0666", TAG+="uaccess"
    ```
    placed as /etc/udev/rules.d/73-vocore.rules
-   - **Controller (evdev, optional):** your user needs read access to the `/dev/input/eventX` node — typically via membership in the `input` group (`sudo usermod -aG input $USER`, then re-login/reboot) or a udev rule.
+
+   **Controller permissions**
+   To use controller widget switching another udev rule is required with uacess to access controller input from user space similar to the vocore.rules as above.
 
 5. **Fonts.** Widgets render text with Open Sans (`/usr/share/fonts/open-sans/OpenSans-{Bold,Regular,Light}.ttf`). Install an `open-sans` package from your distro, or adjust the font paths in `widgets/*.py` to match wherever it's installed.
 
