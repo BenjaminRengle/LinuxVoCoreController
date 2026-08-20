@@ -39,27 +39,44 @@ class TireInfo:
         else:
             return (200, 50, 50)  # Red: worn
 
+    def _get_compound_color(self, compound):
+        """Return a color for a tire compound name (wet/medium/hard/soft)."""
+        name = compound.lower()
+        if "wet" in name:
+            return (60, 140, 255)  # Blue
+        elif "medium" in name:
+            return (230, 210, 40)  # Yellow
+        elif "hard" in name:
+            return (220, 60, 60)  # Red
+        elif "soft" in name:
+            return (160, 160, 160)  # Gray
+        return (200, 200, 200)
+
     def _draw_tire_bars(self, draw, x, y, wear, temp):
-        """Draw visual tire tread bars with rounded outer edges and flat inner edges."""
-        bar_height = 100
-        bar_width = 20
-        bar_spacing = 4
-        radius = min(10, bar_height // 2)
+        """Draw a tire as a single rounded tread block with two thin gaps
+        splitting it into three segments, rather than three separate pills."""
+        tire_width = 100
+        tire_height = 120
+        radius = 20
+        gap_width = 6
 
         normalized_wear = self._normalize_wear(wear)
         color = self._get_tire_color(normalized_wear)
 
-        for i in range(3):
-            bx = x - bar_spacing - (i + 1) * (bar_width + bar_spacing)
+        left = x - tire_width
+        right = x
+        top = y
+        bottom = y + tire_height
 
-            if i == 2:  # Leftmost bar: round the outer left edge
-                draw.rectangle((bx + radius, y, bx + bar_width, y + bar_height), fill=color)
-                draw.ellipse((bx, y, bx + 2 * radius, y + bar_height), fill=color)
-            elif i == 0:  # Rightmost bar: round the outer right edge
-                draw.rectangle((bx, y, bx + bar_width - radius, y + bar_height), fill=color)
-                draw.ellipse((bx + bar_width - 2 * radius, y, bx + bar_width, y + bar_height), fill=color)
-            else:  # Middle bar stays straight
-                draw.rectangle((bx, y, bx + bar_width, y + bar_height), fill=color)
+        draw.rounded_rectangle((left, top, right, bottom), radius=radius, fill=color)
+
+        segment_width = tire_width / 3
+        for i in (1, 2):
+            gap_x = left + segment_width * i
+            draw.rectangle(
+                (gap_x - gap_width / 2, top, gap_x + gap_width / 2, bottom),
+                fill=(0, 0, 0),
+            )
 
     def draw(self, draw, tyre_pressure, tyre_temp, tyre_wear, tyre_slip, compound="", laps=0):
         """
@@ -78,12 +95,16 @@ class TireInfo:
         # Draw background
         draw.rectangle((0, 0, 800, 480), fill=(0, 0, 0))
 
+        # Shift everything right a bit - the physical panel's bezel crops
+        # a sliver off the left edge, cutting into the FL/RL wear% text.
+        offset_x = 30
+
         # Tire positions: FL, FR, RL, RR
         tire_positions = [
-            (400, 50),  # FL
-            (710, 50),  # FR
-            (400, 250),  # RL
-            (710, 250)   # RR
+            (400 + offset_x, 50),  # FL
+            (710 + offset_x, 50),  # FR
+            (400 + offset_x, 250),  # RL
+            (710 + offset_x, 250)   # RR
         ]
         labels = ["FL", "FR", "RL", "RR"]
 
@@ -96,7 +117,7 @@ class TireInfo:
             normalized_wear = self._normalize_wear(wear)
 
             # Draw tire visual bars
-            self._draw_tire_bars(draw, x + 20, y + 20, normalized_wear, temp)
+            self._draw_tire_bars(draw, x + 30, y + 20, normalized_wear, temp)
 
             # Draw wear (large, on the left)
             draw.text(
@@ -118,18 +139,20 @@ class TireInfo:
 
             # Draw pressure (below tire visual)
             draw.text(
-                (x -30, y + 140),
+                (x -30, y + 165),
                 f"{pressure:.0f} psi",
                 anchor="mm",
                 font=self.font_medium,
                 fill="white"
             )
 
-        # Age or lap info
-        # draw.text(
-        #     (center_x, center_y),
-        #     "AGE: 1 LAP" if laps == 0 else f"AGE: {laps} LAP",
-        #     anchor="mm",
-        #     font=self.font_small,
-        #     fill=(150, 150, 150)
-        # )
+        # Compound, in the top-left corner (pushed right - the physical
+        # panel's bezel crops a wide sliver off the left edge here)
+        if compound:
+            draw.text(
+                (200, 20),
+                f"{compound.upper()} COMPOUND",
+                anchor="la",
+                font=self.font_medium,
+                fill=self._get_compound_color(compound)
+            )
